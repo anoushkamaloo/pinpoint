@@ -1,0 +1,224 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.wrap{padding:1.5rem 1rem;display:flex;flex-direction:column;align-items:center;gap:1.25rem;max-width:560px;margin:0 auto;font-family:var(--font-sans)}
+.game-header{width:100%;display:flex;align-items:center;justify-content:space-between}
+.game-label{font-size:12px;font-weight:500;color:var(--color-text-secondary);letter-spacing:.07em;text-transform:uppercase}
+.puzzle-nav{display:flex;gap:6px}
+.nav-btn{width:32px;height:32px;font-size:13px;border-radius:var(--border-radius-md);border:.5px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-primary);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.nav-btn:hover{background:var(--color-background-secondary)}
+.nav-btn.active-puzzle{border-color:#1D9E75;color:#085041;background:#E1F5EE}
+.nav-btn.solved{border-color:#639922;background:#EAF3DE;color:#27500A}
+.nav-btn.failed{border-color:#A32D2D;background:#FCEBEB;color:#791F1F}
+.category-area{width:100%;text-align:center;padding:1.5rem 1rem;border-radius:var(--border-radius-lg);border:.5px solid var(--color-border-tertiary);background:var(--color-background-primary)}
+.cat-prompt{font-size:13px;color:var(--color-text-secondary);margin-bottom:.5rem}
+.cat-answer{font-size:24px;font-weight:500;color:var(--color-text-primary);letter-spacing:.01em;min-height:34px;transition:color .2s}
+.clues-grid{width:100%;display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.clue-card{border-radius:var(--border-radius-md);border:.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);padding:10px 4px;text-align:center;min-height:72px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:background .2s,border-color .2s}
+.clue-num{font-size:11px;color:var(--color-text-tertiary)}
+.clue-word{font-size:13px;font-weight:500;color:var(--color-text-tertiary);word-break:break-word;line-height:1.3}
+.clue-card.revealed{background:var(--color-background-primary);border-color:var(--color-border-secondary)}
+.clue-card.revealed .clue-word{color:var(--color-text-primary)}
+.clue-card.revealed .clue-num{color:var(--color-text-tertiary)}
+.clue-card.won-card{background:#E1F5EE;border-color:#1D9E75}
+.clue-card.won-card .clue-word{color:#085041}
+.clue-card.won-card .clue-num{color:#0F6E56}
+.input-row{width:100%;display:flex;gap:8px}
+.input-row input{flex:1;font-size:15px;padding:0 14px;height:44px;border-radius:var(--border-radius-md);border:.5px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-primary);outline:none}
+.input-row input:focus{box-shadow:0 0 0 2px #5DCAA5}
+.input-row button{height:44px;padding:0 20px;font-size:14px;font-weight:500;border-radius:var(--border-radius-md);border:.5px solid #1D9E75;background:#1D9E75;color:#fff;cursor:pointer;white-space:nowrap}
+.input-row button:hover{background:#0F6E56;border-color:#0F6E56}
+.attempts-row{display:flex;gap:7px;align-items:center}
+.attempt-dot{width:11px;height:11px;border-radius:50%;border:.5px solid var(--color-border-secondary);background:var(--color-background-secondary)}
+.attempt-dot.wrong{background:#F09595;border-color:#A32D2D}
+.attempt-dot.correct{background:#5DCAA5;border-color:#0F6E56}
+.feedback{width:100%;min-height:20px;text-align:center;font-size:13px;color:var(--color-text-secondary)}
+.feedback.wrong{color:#A32D2D}
+.result-banner{width:100%;padding:14px 20px;border-radius:var(--border-radius-lg);text-align:center;font-size:14px;font-weight:500;display:none}
+.result-banner.win{background:#E1F5EE;color:#085041;border:.5px solid #5DCAA5;display:block}
+.result-banner.lose{background:#FCEBEB;color:#791F1F;border:.5px solid #F09595;display:block}
+.footer-hint{font-size:12px;color:var(--color-text-tertiary);text-align:center}
+</style>
+
+<div class="wrap">
+  <div class="game-header">
+    <span class="game-label">Pinpoint</span>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="game-label">Puzzle</span>
+      <div class="puzzle-nav" id="puzzle-nav"></div>
+    </div>
+  </div>
+
+  <div class="category-area">
+    <div class="cat-prompt">What's the category?</div>
+    <div class="cat-answer" id="cat-answer">_ _ _ _ _</div>
+  </div>
+
+  <div class="clues-grid" id="clues-grid"></div>
+
+  <div class="attempts-row" id="attempts-row"></div>
+
+  <div class="input-row" id="input-row">
+    <input type="text" id="guess-input" placeholder="Type your answer…" autocomplete="off" autocorrect="off" spellcheck="false"/>
+    <button onclick="submitGuess()">Guess</button>
+  </div>
+
+  <div class="feedback" id="feedback"></div>
+  <div class="result-banner" id="result-banner"></div>
+
+  <div class="footer-hint">Clue 1 is hardest — guess early for a better score!</div>
+</div>
+
+<script>
+const PUZZLES = [
+  {
+    category: "Aang's past lives",
+    clues: ["Yangchen","Kuruk","Kyoshi","Roku","The Avatar"]
+  },
+  {
+    category: "Fire Nation royals",
+    clues: ["Azulon","Lu Ten","Ursa","Ozai","Zuko"]
+  },
+  {
+    category: "Toph's earthbending moves",
+    clues: ["Seismic sense","Metal cage","Rock gloves","Sinking sand","Giant earth wall"]
+  },
+  {
+    category: "Members of Team Avatar",
+    clues: ["Momo","Suki","Toph","Zuko","Aang"]
+  },
+  {
+    category: "Places in the Water Tribe",
+    clues: ["Agna Qel'a","Foggy Swamp","Yue Bay","Spirit Oasis","Northern Water Tribe"]
+  }
+];
+
+const MAX_WRONG = 5;
+let currentPuzzle = 0;
+let states = PUZZLES.map(() => ({revealed:1, attempts:[], done:false, won:false}));
+
+function getState(){ return states[currentPuzzle]; }
+function getPuzzle(){ return PUZZLES[currentPuzzle]; }
+
+function buildNav(){
+  const nav = document.getElementById('puzzle-nav');
+  nav.innerHTML = '';
+  PUZZLES.forEach((p, i) => {
+    const b = document.createElement('button');
+    const s = states[i];
+    let cls = 'nav-btn';
+    if(i === currentPuzzle) cls += ' active-puzzle';
+    else if(s.done && s.won) cls += ' solved';
+    else if(s.done && !s.won) cls += ' failed';
+    b.className = cls;
+    b.textContent = i + 1;
+    b.onclick = () => { currentPuzzle = i; render(); };
+    nav.appendChild(b);
+  });
+}
+
+function normalise(s){ return s.toLowerCase().replace(/[^a-z0-9\s]/g,'').trim(); }
+
+function isCorrect(guess, category){
+  const g = normalise(guess);
+  const c = normalise(category);
+  if(g === c) return true;
+  if(g.length > 4 && c.includes(g)) return true;
+  return false;
+}
+
+function render(){
+  buildNav();
+  const puzzle = getPuzzle();
+  const state = getState();
+
+  const catEl = document.getElementById('cat-answer');
+  if(state.done){
+    catEl.textContent = puzzle.category;
+    catEl.style.color = state.won ? '#085041' : '#A32D2D';
+  } else {
+    catEl.textContent = '_ _ _ _ _';
+    catEl.style.color = 'var(--color-text-primary)';
+  }
+
+  const grid = document.getElementById('clues-grid');
+  grid.innerHTML = '';
+  puzzle.clues.forEach((word, i) => {
+    const card = document.createElement('div');
+    const isRevealed = i < state.revealed;
+    let cls = 'clue-card';
+    if(isRevealed) cls += state.won ? ' won-card' : ' revealed';
+    card.className = cls;
+    card.innerHTML = `<div class="clue-num">Clue ${i+1}</div><div class="clue-word">${isRevealed ? word : '?'}</div>`;
+    grid.appendChild(card);
+  });
+
+  const attRow = document.getElementById('attempts-row');
+  attRow.innerHTML = '';
+  for(let i = 0; i < MAX_WRONG; i++){
+    const dot = document.createElement('div');
+    const att = state.attempts[i];
+    dot.className = 'attempt-dot' + (att==='wrong'?' wrong': att==='correct'?' correct':'');
+    attRow.appendChild(dot);
+  }
+
+  const inputRow = document.getElementById('input-row');
+  const banner = document.getElementById('result-banner');
+  const fb = document.getElementById('feedback');
+
+  if(state.done){
+    inputRow.style.display = 'none';
+    fb.textContent = '';
+    if(state.won){
+      const used = state.revealed;
+      const labels = ['','Pinpoint!','So close!','Nice!','Getting there!','Just made it!'];
+      banner.className = 'result-banner win';
+      banner.textContent = (labels[used] || 'Got it!') + ' Solved with clue ' + used + ' of 5.';
+    } else {
+      banner.className = 'result-banner lose';
+      banner.textContent = 'Out of guesses! The category was: ' + puzzle.category;
+    }
+  } else {
+    inputRow.style.display = 'flex';
+    banner.className = 'result-banner';
+    const inp = document.getElementById('guess-input');
+    inp.value = '';
+    setTimeout(() => inp.focus(), 50);
+  }
+}
+
+function submitGuess(){
+  const state = getState();
+  const puzzle = getPuzzle();
+  if(state.done) return;
+  const inp = document.getElementById('guess-input');
+  const guess = inp.value.trim();
+  if(!guess) return;
+  const fb = document.getElementById('feedback');
+
+  if(isCorrect(guess, puzzle.category)){
+    state.attempts.push('correct');
+    state.done = true;
+    state.won = true;
+    fb.className = 'feedback';
+    fb.textContent = '';
+  } else {
+    state.attempts.push('wrong');
+    const wrongCount = state.attempts.filter(a => a==='wrong').length;
+    if(wrongCount >= MAX_WRONG){
+      state.done = true;
+    } else {
+      state.revealed = Math.min(state.revealed + 1, puzzle.clues.length);
+      fb.className = 'feedback wrong';
+      fb.textContent = "Not quite — here's your next clue!";
+    }
+  }
+  render();
+}
+
+document.getElementById('guess-input').addEventListener('keydown', e => {
+  if(e.key === 'Enter') submitGuess();
+});
+
+render();
+</script>
